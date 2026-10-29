@@ -1,0 +1,53 @@
+name: Release
+
+# Pushing a `v*` tag (for example `git tag v1.1.0 && git push origin v1.1.0`)
+# creates the matching GitHub Release from the tag and its generated notes.
+#
+# npm publish is OPTIONAL and skipped with a notice until the repository secret
+# NPM_TOKEN exists: create an npm token that may publish the package (npmjs.com
+# -> Access Tokens, or a granular token with read/write access to the
+# "dsh-side-memo" package) and store it under Settings -> Secrets and variables
+# -> Actions -> New repository secret. Re-running this workflow after adding the
+# secret publishes the same tag's version (fail-safe: npm refuses to republish
+# an existing version), and ordinary pushes and pull requests never touch
+# secrets.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # Full history so `gh release create --generate-notes` can diff
+          # against the previous release tag.
+          fetch-depth: 0
+
+      - name: Set up Node.js and the npm registry
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "::notice::NPM_TOKEN is not configured - skipping npm publish. Add the secret, then re-run this workflow or push a new tag."
+            exit 0
+          fi
+          npm publish --access public
+
+      - name: Create GitHub Release
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: unit (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - 22.x
+          - 24.x
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Validate package manifest and host entry
+        run: |
+          node -e "const fs=require('node:fs'); const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); if (pkg.name!=='dsh-side-memo') throw new Error('unexpected package name: '+pkg.name); if (pkg.type!=='module') throw new Error('package must stay ESM'); if (pkg.dsh===null || typeof pkg.dsh!=='object') throw new Error('missing dsh block'); console.log('package.json OK '+pkg.name+'@'+pkg.version);"
+          node -e "import('./index.js').then(function (host) { if (typeof host.apply !== 'function') throw new Error('index.js must export an apply() function'); console.log('index.js loads OK'); }).catch(function (error) { console.error(error); process.exit(1); });"
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Verify published tarball contents
+        run: |
+          npm_config_cache=.npm-cache npm pack --dry-run --json > pack.json
+          node <<'NODE'
+          const { readFileSync } = require('node:fs');
+
+          // npm pack always ships package.json, README* and LICENSE* on top of
+          // the "files" field, so both localized READMEs are expected too.
+          const expected = [
+            'LICENSE',
+            'README.md',
+            'README.zh-CN.md',
+            'README.zh-TW.md',
+            'assets/side-memo-banner.png',
+            'client.js',
+            'cordis.patch.yml',
+            'icon.svg',
+            'index.js',
+            'locale/en.json',
+            'locale/zh.json',
+            'package.json',
+          ].sort();
+
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const report = JSON.parse(readFileSync('pack.json', 'utf8').replace(/^\uFEFF/, ''));
+          if (!Array.isArray(report) || report.length !== 1) {
+            throw new Error('npm pack --dry-run --json must describe exactly one tarball');
+          }
+
+          const tarball = report[0];
+          if (tarball.name !== pkg.name || tarball.version !== pkg.version) {
+            throw new Error('packed identity ' + tarball.name + '@' + tarball.version + ' does not match package.json ' + pkg.name + '@' + pkg.version);
+          }
+
+          const actual = tarball.files.map((file) => file.path).sort();
+          const missing = expected.filter((path) => !actual.includes(path));
+          const extra = actual.filter((path) => !expected.includes(path));
+          if (missing.length > 0 || extra.length > 0) {
+            console.error('missing from tarball: ' + JSON.stringify(missing));
+            console.error('unexpected in tarball: ' + JSON.stringify(extra));
+            process.exit(1);
+          }
+          if (tarball.entryCount !== expected.length) {
+            throw new Error('entryCount ' + tarball.entryCount + ' does not match expected ' + expected.length);
+          }
+
+          console.log('tarball contents OK (' + actual.length + ' files):');
+          for (const path of actual) console.log('  ' + path);
+          NODE

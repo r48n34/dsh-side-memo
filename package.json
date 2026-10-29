@@ -1,0 +1,70 @@
+{
+  "name": "dsh-side-memo",
+  "version": "1.1.0",
+  "description": "Toggleable Side Memo notes panel for DeepSeek Harness: labels/tags, inline images, favorites pinned to the top, quick copy, drag a memo into the chat box to paste it, and Excel (.xlsx) import/export.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "deepseek",
+    "plugin",
+    "notes",
+    "memo",
+    "sidebar",
+    "sticky-notes",
+    "labels",
+    "tags",
+    "images",
+    "drag-and-drop",
+    "xlsx"
+  ],
+  "license": "MIT",
+  "author": "Reemo Studio (https://github.com/r48n34)",
+  "homepage": "https://github.com/r48n34/dsh-side-memo#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/r48n34/dsh-side-memo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/r48n34/dsh-side-memo/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "node --test test/unit/**/*.test.mjs"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "assets/side-memo-banner.png",
+    "README.md",
+    "LICENSE"
+  ],
+  "icon": "./icon.svg",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  }
+}
