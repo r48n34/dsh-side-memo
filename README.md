@@ -66,7 +66,7 @@ Imports add new notes without overwriting existing ones. Images remain local and
 - Web GUI and Desktop (Electron/Chromium). The client half relies on standard browser APIs: `localStorage`, IndexedDB, Clipboard, File API, `Blob`/`URL`, Canvas, and `DecompressionStream('deflate-raw')` for reading compressed `.xlsx` files.
 - Uses the shipped right-sidebar plugin API (`@deepseek-ai/dsh-client-ui-sidebar-right`); the panel is a normal right-sidebar tab, so a Session is required to host it. Before any Session exists the same notes UI is rendered by the plugin itself in the frame-level overlay layer (`shell.overlay`). In the pre-Session and new-Session phases the toggle mounts through the resident header's `conversation.header.leading` seat and positions itself at the header's right edge from the live header/panel-toggle geometry.
 - Uses the conversation client's composer insertion API (`inputActions`) to paste a dragged memo into the chat draft as a single undoable edit.
-- No build step: `client.js` is the browser module and `index.js` is a no-op Host half.
+- TypeScript sources live under `src/`; `client.js` and `index.js` are the compiled browser and Host modules committed to the repository, so installing or running the plugin never needs a build step.
 
 ## Permissions & privacy
 
@@ -90,23 +90,25 @@ Imports add new notes without overwriting existing ones. Images remain local and
 
 ## Development
 
-The repository is the complete plugin package — no bundler or build step:
+TypeScript sources live under `src/` and compile to the committed `client.js` / `index.js` with the TypeScript compiler only (no bundler):
 
 | File | Role |
 |---|---|
 | `package.json` | Bundle/client manifest (`dsh.bundle` patch and `dsh.client` browser module) |
 | `cordis.patch.yml` | Inserts the `dsh-side-memo` Loader row |
-| `index.js` | Host half (no-op `apply`) |
-| `client.js` | Notes panel, tab type, always-available header toggle, pre-Session drawer, localStorage + IndexedDB store, inline-image editor, label tags/filter/grouping, editor top-bar new-memo button, drag-memo-to-composer paste, `.xlsx` import/export |
+| `index.js` | Host half (no-op `apply`; generated from `src/host/index.ts`) |
+| `client.js` | Notes panel, tab type, always-available header toggle, pre-Session drawer, localStorage + IndexedDB store, inline-image editor, label tags/filter/grouping, editor top-bar new-memo button, drag-memo-to-composer paste, `.xlsx` import/export (generated from `src/client/`) |
+| `src/` | TypeScript sources for both halves |
+| `tsconfig.json`, `scripts/build.mjs` | Type-check configuration and the `yarn build` script |
 | `locale/en.json`, `locale/zh.json` | Plugin Manager title and description |
 | `icon.svg` | Plugin artwork |
 
-Load it into a profile with the DSH Plugin Manager (`install_bundle` on this directory) or install it with the commands in [Install](#install). Package contents are limited to the files above; the npm tarball adds the three READMEs and the LICENSE to those runtime assets.
+Load it into a profile with the DSH Plugin Manager (`install_bundle` on this directory) or install it with the commands in [Install](#install). Package contents are limited to the published files — `index.js`, `client.js`, the locale files, `icon.svg`, `package.json` and `cordis.patch.yml`. The TypeScript sources, build script and config never ship, and the published tarball only adds the three READMEs and the LICENSE.
 
 ### Tests
 
-- Unit tests: `npm test` runs `node --test` on Node.js **>=22**. There are no dependencies, so no `npm install` is needed; the suite exercises the real helpers in `client.js`.
-- Browser e2e (optional, dev-only; not part of `npm test`): see [`test/e2e/README.md`](test/e2e/README.md) for the isolated-profile harness and its suites.
+- Unit tests: `yarn test` runs `node --test` on Node.js **>=22** after rebuilding the artifacts (`pretest`). Run `yarn install` once for the build toolchain — `typescript` and `@types/react` are the only dev dependencies and the published package has none — then the suite exercises the real helpers in the compiled `client.js`.
+- Browser e2e (optional, dev-only; not part of `yarn test`): see [`test/e2e/README.md`](test/e2e/README.md) for the isolated-profile harness and its suites.
 - CI runs the unit suite on every push and pull request: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ## License

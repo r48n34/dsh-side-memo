@@ -68,7 +68,7 @@ dsh plugin --profile desktop add dsh-side-memo
 - Web GUI 與 Desktop（Electron/Chromium）。用戶端部分只依賴標準瀏覽器 API：`localStorage`、IndexedDB、Clipboard、File API、`Blob`/`URL`、Canvas，以及用來讀取壓縮 `.xlsx` 檔的 `DecompressionStream('deflate-raw')`。
 - 使用內建的右側邊欄外掛 API（`@deepseek-ai/dsh-client-ui-sidebar-right`）；面板是標準的右側邊欄分頁，因此需要一個工作階段來承載它。在任何工作階段出現之前，同一套便箋介面由外掛本身在框架層覆蓋層（`shell.overlay`）中繪製。在工作階段建立前與新工作階段階段，開關會透過常駐標題列的 `conversation.header.leading` 位置掛載，並依即時的標題列/面板開關幾何資訊，把自己定位在標題列最右側。
 - 使用工作階段用戶端的輸入框插入 API（`inputActions`）把拖入的便箋以單次可復原的編輯寫入聊天草稿。
-- 無需建置步驟：`client.js` 是瀏覽器模組，`index.js` 是不做任何事的 Host 端。
+- TypeScript 原始碼位於 `src/`；`client.js` 與 `index.js` 是由原始碼編譯並提交到儲存庫的瀏覽器/Host 模組，因此安裝或執行外掛都不需要建置步驟。
 
 ## 權限與隱私
 
@@ -92,23 +92,25 @@ dsh plugin --profile desktop add dsh-side-memo
 
 ## 開發
 
-這個儲存庫就是完整的外掛套件——沒有打包器或建置步驟：
+TypeScript 原始碼位於 `src/`，僅用 TypeScript 編譯器（不含打包器）編譯成提交在儲存庫中的 `client.js` 與 `index.js`：
 
 | 檔案 | 用途 |
 |---|---|
 | `package.json` | Bundle/用戶端資訊清單（`dsh.bundle` 修補與 `dsh.client` 瀏覽器模組） |
 | `cordis.patch.yml` | 插入 `dsh-side-memo` 的 Loader 列 |
-| `index.js` | Host 端（空的 `apply`） |
-| `client.js` | 便箋面板、分頁類型、隨時可用的標題列開關、工作階段前抽屜、localStorage + IndexedDB 儲存、內嵌圖片編輯器、標籤篩選/分組、編輯器頂端列新增便箋按鈕、拖入聊天框貼上、`.xlsx` 匯入/匯出 |
+| `index.js` | Host 端（空的 `apply`；由 `src/host/index.ts` 產生） |
+| `client.js` | 便箋面板、分頁類型、隨時可用的標題列開關、工作階段前抽屜、localStorage + IndexedDB 儲存、內嵌圖片編輯器、標籤篩選/分組、編輯器頂端列新增便箋按鈕、拖入聊天框貼上、`.xlsx` 匯入/匯出（由 `src/client/` 產生） |
+| `src/` | 兩部分的 TypeScript 原始碼 |
+| `tsconfig.json`、`scripts/build.mjs` | 型別檢查設定與 `yarn build` 腳本 |
 | `locale/en.json`、`locale/zh.json` | 外掛管理員的標題與說明 |
 | `icon.svg` | 外掛圖示 |
 
-可以用 DSH 外掛管理員（對此目錄呼叫 `install_bundle`）把它載入某個設定檔，或使用 [安裝](#安裝) 中的指令安裝。套件內容僅限上表所列檔案；npm tarball 中除這些執行時資源外，還會附帶三個 README 與 LICENSE。
+可以用 DSH 外掛管理員（對此目錄呼叫 `install_bundle`）把它載入某個設定檔，或使用 [安裝](#安裝) 中的指令安裝。套件內容僅限上表所列的執行時檔案——原始碼與建置腳本不會進入發布套件，npm tarball 只是在這些執行時資源之外附帶三個 README 與 LICENSE。
 
 ### 測試
 
-- 單元測試：`npm test` 使用 Node.js 內建的 `node --test` 執行（需要 Node.js **>=22**）。專案沒有第三方相依套件，無需 `npm install`；測試會直接呼叫 `client.js` 中的真實輔助函式。
-- 瀏覽器端對端測試（選用，僅供開發使用，不包含在 `npm test` 中）：參見 [`test/e2e/README.md`](test/e2e/README.md)，了解隔離設定檔下的測試環境與執行方式。
+- 單元測試：`yarn test` 會先重新建置（`pretest`），再使用 Node.js 內建的 `node --test` 執行（需要 Node.js **>=22**）。第一次執行請先 `yarn install` 安裝建置工具鏈——開發相依套件只有 `typescript` 與 `@types/react`，發布的套件本身沒有相依套件——測試會直接呼叫編譯後的 `client.js` 中的真實輔助函式。
+- 瀏覽器端對端測試（選用，僅供開發使用，不包含在 `yarn test` 中）：參見 [`test/e2e/README.md`](test/e2e/README.md)，了解隔離設定檔下的測試環境與執行方式。
 - CI 會在每次 push 和 pull request 時執行單元測試：[`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
 
 ## 授權條款

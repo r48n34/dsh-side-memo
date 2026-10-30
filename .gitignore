@@ -6,6 +6,7 @@ dist/
 .scratch/
 .dsh-test/
 .dsh-install/
+.build/
 __pycache__/
 *.pyc
 *.log

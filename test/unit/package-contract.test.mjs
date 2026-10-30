@@ -35,20 +35,50 @@ test('package.json declares the plugin identity and module type', async () => {
   assert.equal(pkg.icon, './icon.svg');
 });
 
-test('package.json has no runtime or development dependencies', async () => {
+test('package.json has no runtime dependencies and a pinned build toolchain', async () => {
   const pkg = await readJson('package.json');
-  for (const field of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+  for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
     const value = pkg[field];
     assert.ok(
       value === undefined || Object.keys(value).length === 0,
       field + ' must be empty or absent'
     );
   }
+  // The published package stays dependency-free; only the TypeScript
+  // sources are compiled, and the compiler is a build-time dev dependency.
+  assert.deepEqual(pkg.devDependencies, {
+    '@types/react': '18.3.31',
+    typescript: '5.9.3'
+  });
 });
 
-test('npm test runs the unit suite glob', async () => {
+test('yarn test runs the unit suite glob', async () => {
   const pkg = await readJson('package.json');
   assert.equal(pkg.scripts.test, 'node --test test/unit/**/*.test.mjs');
+});
+
+test('yarn scripts build and type-check the TypeScript sources', async () => {
+  const pkg = await readJson('package.json');
+  assert.equal(pkg.scripts.build, 'node scripts/build.mjs');
+  assert.equal(pkg.scripts.typecheck, 'tsc -p tsconfig.json');
+  assert.equal(pkg.scripts.pretest, 'yarn build');
+  assert.equal(pkg.scripts.prepublishOnly, 'yarn build');
+  assert.equal(pkg.packageManager, 'yarn@1.22.22');
+});
+
+test('dependencies are locked with Yarn', async () => {
+  assert.ok(await exists('yarn.lock'), 'yarn.lock must be committed');
+  await assert.rejects(access(join(repoRoot, 'package-lock.json')), 'npm lockfile must not coexist with yarn.lock');
+});
+
+test('committed artifacts are generated from src/', async () => {
+  const banner = '/* Generated from src/ by `yarn build` - do not edit directly. */';
+  const client = await readText('client.js');
+  const host = await readText('index.js');
+  assert.ok(client.startsWith(banner), 'client.js must carry the generated banner');
+  assert.ok(host.startsWith(banner), 'index.js must carry the generated banner');
+  assert.ok(client.includes('require("react")'), 'client.js must receive React from the loader');
+  assert.ok(!client.includes('react/jsx-runtime'), 'client.js must not need a JSX runtime');
 });
 
 test('exports targets all exist', async () => {

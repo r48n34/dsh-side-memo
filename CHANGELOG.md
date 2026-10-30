@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The plugin is now written in TypeScript: the browser half lives in `src/client/` and the Host half in `src/host/`, compiled by `yarn build` (the TypeScript compiler only — no bundler) into the committed `client.js` and `index.js`. The published package is unchanged: same files and entry points, no runtime dependencies, and no build toolchain needed to install or run it. `yarn test` rebuilds the artifacts first, so the unit suite still exercises the shipped `client.js`. Development is pinned to Yarn 1 through `packageManager` and `yarn.lock`; the package itself is still published to the npm registry.
+- Internal: `yarn typecheck` type-checks the sources, CI also verifies the committed artifacts match a fresh build, and `devDependencies` are limited to `typescript` and `@types/react`.
+
 ## 1.1.0 — 2026-10-29
 
 - The memo editor's top bar has a **New** button that creates a new memo and jumps straight into it with the title focused, so starting another memo no longer requires going back to the list first. If the open memo is still the blank draft that button just created, clicking it again reuses that draft instead of stacking up empty memos.

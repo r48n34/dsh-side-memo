@@ -37,6 +37,16 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
 
+      - name: Enable Yarn and install build toolchain
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile
+
+      - name: Rebuild artifacts from src/
+        run: |
+          yarn build
+          git diff --exit-code -- client.js index.js
+
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

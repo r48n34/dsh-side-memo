@@ -1,7 +1,7 @@
 # Side Memo browser e2e harness
 
 Optional, dev-only browser verification for the **real** `dsh-side-memo` plugin
-UI (`client.js`). It is **not** part of `npm test` and is not required to build or
+UI (`client.js`). It is **not** part of `yarn test` and is not required to build or
 release the plugin; it exists to prove that the labels / New memo / paste-image
 features still work inside the actual DSH web shell after a markup or behavior
 change.
@@ -50,7 +50,7 @@ script checks `shouldRunAsMain()` (in `config.mjs`) and only runs when invoked
 directly. If a bare `node --test` run imports them because they live under
 `test/`, they are harmless no-ops (the browser-only `fixtures/harness.js` also
 guards on `window`/`document` being present). The supported unit entry point is
-`npm test` (`node --test test/unit/**/*.test.mjs`); a bare `node --test` is not
+`yarn test` (`node --test test/unit/**/*.test.mjs`); a bare `node --test` is not
 what this repo runs and would also import *every* file under `test/`, not just
 the e2e scripts.
 
@@ -85,7 +85,7 @@ scripts.
 
 Keep the isolated `DSM_DSH_HOME` **outside this checkout** (for example under
 `%TEMP%` or a sibling directory). Creating it inside `test/` would make Node's
-test runner discover the profile's JavaScript files on the next `npm test`.
+test runner discover the profile's JavaScript files on the next `yarn test`.
 
 ## One-time isolated DSH_HOME
 
@@ -119,7 +119,7 @@ checkout and bundles the plugin (use the absolute path to your clone):
 }
 ```
 
-Finally install/link the dependency into the profile, e.g. with `npm install` in
+Finally install/link the dependency into the profile, e.g. with `yarn install` in
 `$env:DSH_HOME/profiles/web`, or by creating a directory junction on Windows:
 
 ```powershell
@@ -128,8 +128,9 @@ New-Item -ItemType Junction `
   -Target '<absolute-path-to-this-checkout>'
 ```
 
-Restart the server after editing `client.js`: the served bundle is assembled at
-boot, and a stale bundle is the usual cause of "selector not found".
+Edit the TypeScript sources in `src/`, then run `yarn build` before restarting the
+server: `client.js` is generated, and the served bundle is assembled at boot, so a
+stale bundle is the usual cause of "selector not found".
 
 ## Run it
 
@@ -311,8 +312,8 @@ Durations were ~4.8 s / ~15.9 s / ~8.5 s
 and are informational only. The `imagesLegacy` probe marker `dsm-image-input`
 stays `false` (informational: it only exists in a custom event-bus build).
 
-Local note: this checkout's `npm test` only runs `test/unit`; the e2e harness is
-not part of `npm test` and this verification does not change that. Under a
-sandbox that blocks Node's test-runner child processes, `npm test` can fail with
+Local note: this checkout's `yarn test` only runs `test/unit`; the e2e harness is
+not part of `yarn test` and this verification does not change that. Under a
+sandbox that blocks Node's test-runner child processes, `yarn test` can fail with
 `spawn EPERM`; use `node --test --test-isolation=none "test/unit/**/*.test.mjs"`
 for local evidence (CI is unaffected).

@@ -1,8 +1,9 @@
 # Unit tests
 
 Node-only unit suite for the `dsh-side-memo` client plugin. It uses the built-in
-`node:test` runner and `node:assert/strict` only — there are no test dependencies
-and nothing is built, so a checkout is ready to test.
+`node:test` runner and `node:assert/strict` only — there are no test dependencies.
+The shipped `client.js` is compiled from the TypeScript sources in `src/`, so run
+`yarn install` once and let `yarn test` rebuild it (`pretest`) before the suite runs.
 
 The suite loads the **real** `client.js` module in Node through a test-only loader
 (`test/support/load-client.mjs`) and drives the same plain-data helpers the
@@ -12,12 +13,14 @@ Electron or a DSH host.
 ## Requirements
 
 - Node.js 22 or newer (CI runs 22.x and 24.x; developed on 24)
+- Yarn 1 (`corepack` or a global `yarn`) and `yarn install` once for the
+  `typescript` build toolchain (the published package itself has no dependencies)
 - Run commands from the repository root
 
 ## Commands
 
 ```powershell
-# CI form: what `npm test` runs
+# CI form: what `yarn test` runs
 node --test test/unit/**/*.test.mjs
 
 # one file while iterating
@@ -57,7 +60,7 @@ Both forms execute the same tests and assertions.
 | `test/unit/xlsx.test.mjs` | UTF-8 encode/decode, CRC-32 check value, `xmlEscape`/`xmlDecode`, `xlsxCell`, store-only ZIP layout, `buildXlsxNotes` → `parseSheetRows` round-trip, `importTimestamp`, `importFavorite`, label/header parsing |
 | `test/unit/drag-drop.test.mjs` | `memoDragText`/`memoDragPayload`, `fillMemoDragData`, `readMemoDragPayload` (malformed JSON safety), `memoDragTypesInclude`, `composerEditorFor`, `planMemoDrop`, `insertMemoIntoComposer` |
 | `test/unit/i18n.test.mjs` | `dict.zh` / `dict.en` key parity, `{placeholder}` parity and multiplicity, non-empty translations, locale namespaces |
-| `test/unit/package-contract.test.mjs` | `package.json` identity/version/`files`/`exports` targets/no dependencies, DSH bundle patch, `cordis.patch.yml`, module id, locale metadata, screenshots, README version badges, CHANGELOG top release, no absolute personal paths in authored tests |
+| `test/unit/package-contract.test.mjs` | `package.json` identity/version/`files`/`exports` targets/no runtime dependencies and pinned dev toolchain, build/typecheck scripts, generated-artifact banner, DSH bundle patch, `cordis.patch.yml`, module id, locale metadata, screenshots, README version badges, CHANGELOG top release, no absolute personal paths in authored tests |
 
 ## How the loader works
 

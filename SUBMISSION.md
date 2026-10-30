@@ -8,7 +8,7 @@ claimed as verified here.
 
 - [x] Version `1.1.0` set in `package.json`; the top `CHANGELOG.md` section is `1.1.0 — 2026-10-29`.
 - [x] Tag `v1.1.0` created for the release commit.
-- [x] Unit tests: a dependency-free suite run with `npm test` (`node --test`, Node.js >= 22) covering labels, note/content limits, `.xlsx` round-trip, drag-to-compose, i18n key parity, and the package contract.
+- [x] Unit tests: `yarn test` (`node --test`, Node.js >= 22) covering labels, note/content limits, `.xlsx` round-trip, drag-to-compose, i18n key parity, and the package contract. The published package has no runtime dependencies; the checkout needs the `typescript` dev dependency to compile `src/` into the committed artifacts before the suite runs.
 - [x] CI: `.github/workflows/ci.yml` runs the unit suite and a package-content check on every push and pull request to `main`.
 - [x] Release automation: `.github/workflows/release.yml` creates the GitHub Release when a `v*` tag is pushed and runs `npm publish` only when the optional `NPM_TOKEN` repository secret is configured (otherwise the publish step is skipped with a notice and the release is still created).
 - [x] Git history rewritten to drop the committed development scaffolding (`.dsh-test/`, `.dsh-install/`) and the test-only credential it held.

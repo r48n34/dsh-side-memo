@@ -67,7 +67,7 @@ dsh plugin --profile desktop add dsh-side-memo
 - Web GUI 与 Desktop（Electron/Chromium）。客户端部分只依赖标准浏览器 API：`localStorage`、IndexedDB、Clipboard、File API、`Blob`/`URL`、Canvas，以及用于读取压缩 `.xlsx` 文件的 `DecompressionStream('deflate-raw')`。
 - 使用内置的右侧边栏插件 API（`@deepseek-ai/dsh-client-ui-sidebar-right`）；面板是标准的右侧边栏标签页，因此需要一个会话来承载它。在任何会话出现之前，同一套便签界面由插件自己在框架级覆盖层（`shell.overlay`）中渲染。在会话建立前和新会话阶段，开关通过常驻标题栏的 `conversation.header.leading` 位置挂载，并根据实时的标题栏/面板开关几何信息把自己定位到标题栏右端。
 - 使用会话客户端的输入框插入 API（`inputActions`）把拖入的便签作为一次可撤销的编辑写入聊天草稿。
-- 无需构建步骤：`client.js` 是浏览器模块，`index.js` 是不做任何事的宿主（Host）部分。
+- TypeScript 源码位于 `src/`；`client.js` 与 `index.js` 是由源码编译并提交到仓库的浏览器/宿主模块，因此安装或运行插件都不需要构建步骤。
 
 ## 权限与隐私
 
@@ -91,23 +91,25 @@ dsh plugin --profile desktop add dsh-side-memo
 
 ## 开发
 
-仓库就是完整的插件包——没有打包器或构建步骤：
+TypeScript 源码位于 `src/`，仅用 TypeScript 编译器（不含打包器）编译为提交在仓库中的 `client.js` 与 `index.js`：
 
 | 文件 | 作用 |
 |---|---|
 | `package.json` | Bundle/客户端清单（`dsh.bundle` 补丁与 `dsh.client` 浏览器模块） |
 | `cordis.patch.yml` | 插入 `dsh-side-memo` 的 Loader 行 |
-| `index.js` | 宿主部分（空的 `apply`） |
-| `client.js` | 便签面板、标签页类型、始终可用的标题栏开关、会话前抽屉、localStorage + IndexedDB 存储、内嵌图片编辑器、标签筛选/分组、编辑器顶栏新建按钮、拖入聊天框粘贴、`.xlsx` 导入/导出 |
+| `index.js` | 宿主部分（空的 `apply`；由 `src/host/index.ts` 生成） |
+| `client.js` | 便签面板、标签页类型、始终可用的标题栏开关、会话前抽屉、localStorage + IndexedDB 存储、内嵌图片编辑器、标签筛选/分组、编辑器顶栏新建按钮、拖入聊天框粘贴、`.xlsx` 导入/导出（由 `src/client/` 生成） |
+| `src/` | 两部分的 TypeScript 源码 |
+| `tsconfig.json`、`scripts/build.mjs` | 类型检查配置与 `yarn build` 脚本 |
 | `locale/en.json`、`locale/zh.json` | 插件管理器的标题和描述 |
 | `icon.svg` | 插件图标 |
 
-可以用 DSH 插件管理器（对本目录调用 `install_bundle`）把它加载到某个配置中，或用 [安装](#安装) 中的命令安装。包内容仅限上表列出的文件；npm tarball 中除这些运行时资源外，还会附带三个 README 和 LICENSE。
+可以用 DSH 插件管理器（对本目录调用 `install_bundle`）把它加载到某个配置中，或用 [安装](#安装) 中的命令安装。包内容仅限上表列出的运行时文件——源码与构建脚本不会进入发布包，npm tarball 只是在这些运行时资源之外附带三个 README 和 LICENSE。
 
 ### 测试
 
-- 单元测试：`npm test` 使用 Node.js 内置的 `node --test` 运行（需要 Node.js **>=22**）。项目没有第三方依赖，无需 `npm install`；测试直接调用 `client.js` 中的真实辅助函数。
-- 浏览器端到端测试（可选，仅开发使用，不包含在 `npm test` 中）：参见 [`test/e2e/README.md`](test/e2e/README.md)，了解隔离配置下的测试环境与运行方式。
+- 单元测试：`yarn test` 会先重新构建（`pretest`），再用 Node.js 内置的 `node --test` 运行（需要 Node.js **>=22**）。首次运行请执行一次 `yarn install` 安装构建工具链——开发依赖仅有 `typescript` 与 `@types/react`，发布的包本身没有依赖——测试会直接调用编译后的 `client.js` 中的真实辅助函数。
+- 浏览器端到端测试（可选，仅开发使用，不包含在 `yarn test` 中）：参见 [`test/e2e/README.md`](test/e2e/README.md)，了解隔离配置下的测试环境与运行方式。
 - CI 在每次 push 和 pull request 时运行单元测试：[`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
 
 ## 许可证
