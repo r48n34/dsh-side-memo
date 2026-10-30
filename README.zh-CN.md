@@ -10,6 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Version](https://img.shields.io/badge/version-1.1.0-4D6BFE)
+[![npm](https://img.shields.io/npm/v/dsh-side-memo?label=npm&color=4D6BFE)](https://www.npmjs.com/package/dsh-side-memo)
 [![CI](https://github.com/r48n34/dsh-side-memo/actions/workflows/ci.yml/badge.svg)](https://github.com/r48n34/dsh-side-memo/actions/workflows/ci.yml)
 ![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.x-4D6BFE)
 ![Platform](https://img.shields.io/badge/platform-Web%20%7C%20Desktop-lightgrey)
@@ -18,22 +19,22 @@
 
 ## 安装
 
-直接从本仓库安装——在 npm 包发布之前，这是主要的安装方式：
-
-```bash
-dsh plugin --profile web add github:r48n34/dsh-side-memo
-```
-
-> npm 包目前尚未发布，所以下面的 npm 安装命令暂时无法使用。等它发布后，这条更短的命令会安装同一个插件：
+`dsh-side-memo` 已[发布到 npm](https://www.npmjs.com/package/dsh-side-memo)。通过你的 DSH 配置（profile）安装：
 
 ```bash
 dsh plugin --profile web add dsh-side-memo
 ```
 
+也可以直接从本仓库安装——当需要的提交尚未发布到 npm，或无法访问 npm 时，使用 GitHub 形式：
+
+```bash
+dsh plugin --profile web add github:r48n34/dsh-side-memo
+```
+
 如果你的 DSH 运行的是 Desktop 配置（profile），请使用 **设置 → 插件** 中显示的配置名（Desktop 应用通常是 `desktop`）：
 
 ```bash
-dsh plugin --profile desktop add github:r48n34/dsh-side-memo
+dsh plugin --profile desktop add dsh-side-memo
 ```
 
 安装后，**侧边便签** 图标就已经在会话标题栏上——位于标题栏右端，包括还没有任何会话时（首屏）以及新会话欢迎页。可以从这里打开它，也可以从会话标题栏右侧的功能区，或右侧边栏的添加/引导控件打开。如果没有看到图标，请重启一次 DSH，让新的插件包完成加载。
@@ -101,7 +102,7 @@ dsh plugin --profile desktop add github:r48n34/dsh-side-memo
 | `locale/en.json`、`locale/zh.json` | 插件管理器的标题和描述 |
 | `icon.svg` | 插件图标 |
 
-可以用 DSH 插件管理器（对本目录调用 `install_bundle`）把它加载到某个配置中，或用 [安装](#安装) 中的命令安装。包内容仅限上表列出的文件；npm tarball 中只包含运行时资源，以及 README 和 LICENSE。
+可以用 DSH 插件管理器（对本目录调用 `install_bundle`）把它加载到某个配置中，或用 [安装](#安装) 中的命令安装。包内容仅限上表列出的文件；npm tarball 中除这些运行时资源外，还会附带三个 README 和 LICENSE。
 
 ### 测试
 

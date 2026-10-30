@@ -10,6 +10,7 @@ A lightweight, toggleable **right-side notes panel** for [DeepSeek Harness](http
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Version](https://img.shields.io/badge/version-1.1.0-4D6BFE)
+[![npm](https://img.shields.io/npm/v/dsh-side-memo?label=npm&color=4D6BFE)](https://www.npmjs.com/package/dsh-side-memo)
 [![CI](https://github.com/r48n34/dsh-side-memo/actions/workflows/ci.yml/badge.svg)](https://github.com/r48n34/dsh-side-memo/actions/workflows/ci.yml)
 ![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.x-4D6BFE)
 ![Platform](https://img.shields.io/badge/platform-Web%20%7C%20Desktop-lightgrey)
@@ -18,22 +19,22 @@ A lightweight, toggleable **right-side notes panel** for [DeepSeek Harness](http
 
 ## Install
 
-Install directly from this repository — the primary install path while the package is not on npm:
-
-```bash
-dsh plugin --profile web add github:r48n34/dsh-side-memo
-```
-
-> The npm package is not published yet, so the npm form below does not work today. Once it is published, the shorter command will install the same plugin:
+`dsh-side-memo` is [published on npm](https://www.npmjs.com/package/dsh-side-memo). Install it through your DSH profile:
 
 ```bash
 dsh plugin --profile web add dsh-side-memo
 ```
 
+The same plugin can also be installed straight from this repository — use the GitHub form when you need a commit that is not on npm yet, or when npm is unreachable:
+
+```bash
+dsh plugin --profile web add github:r48n34/dsh-side-memo
+```
+
 If your DSH runs the Desktop profile, use the profile name shown in **Settings → Plugins** (for the Desktop app this is usually `desktop`):
 
 ```bash
-dsh plugin --profile desktop add github:r48n34/dsh-side-memo
+dsh plugin --profile desktop add dsh-side-memo
 ```
 
 After installing, the **Side Memo** icon is already available in the Session header — at the header's right edge, including before any Session exists (the first screen) and on the new-Session welcome screen. Open it from there, from the Session header's right-side utilities, or from the right sidebar's add/guide control. If the icon does not appear, restart DSH once so the new plugin bundle is loaded.
@@ -100,7 +101,7 @@ The repository is the complete plugin package — no bundler or build step:
 | `locale/en.json`, `locale/zh.json` | Plugin Manager title and description |
 | `icon.svg` | Plugin artwork |
 
-Load it into a profile with the DSH Plugin Manager (`install_bundle` on this directory) or install it with the commands in [Install](#install). Package contents are limited to the files above; the npm tarball contains only runtime assets plus README and LICENSE.
+Load it into a profile with the DSH Plugin Manager (`install_bundle` on this directory) or install it with the commands in [Install](#install). Package contents are limited to the files above; the npm tarball adds the three READMEs and the LICENSE to those runtime assets.
 
 ### Tests
 

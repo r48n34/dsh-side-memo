@@ -15,6 +15,7 @@
 - The right sidebar's Start guide now draws a dedicated memo artwork on the Side Memo card — the plugin's page-in-brand-blue mark — instead of the generic placeholder glyph.
 - Docs: added Simplified Chinese (`README.zh-CN.md`) and Traditional Chinese (`README.zh-TW.md`) READMEs, with a language switcher at the top of all three versions and a product screenshot (`assets/plugin0_0_1_screenshot.jpg`) in each.
 - Memo list rows are now draggable: drop a memo on the chat box and its text is pasted into the composer at the caret as a single undoable edit, inserted through the conversation's `inputActions` API. When the composer cannot take the edit (for example while a message is submitting) the panel says so instead of dropping the memo silently; memo images and labels are not transferred.
+- Release: published to npm as [`dsh-side-memo@1.1.0`](https://www.npmjs.com/package/dsh-side-memo) on 2026-10-30. The three READMEs now install from npm first (`dsh plugin --profile web add dsh-side-memo`), with the GitHub-source command kept as the fallback.
 
 ## 1.0.0 — 2026-10-28
 

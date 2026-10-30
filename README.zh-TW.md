@@ -10,6 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Version](https://img.shields.io/badge/version-1.1.0-4D6BFE)
+[![npm](https://img.shields.io/npm/v/dsh-side-memo?label=npm&color=4D6BFE)](https://www.npmjs.com/package/dsh-side-memo)
 [![CI](https://github.com/r48n34/dsh-side-memo/actions/workflows/ci.yml/badge.svg)](https://github.com/r48n34/dsh-side-memo/actions/workflows/ci.yml)
 ![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.x-4D6BFE)
 ![Platform](https://img.shields.io/badge/platform-Web%20%7C%20Desktop-lightgrey)
@@ -18,22 +19,22 @@
 
 ## 安裝
 
-直接從這個儲存庫安裝——在 npm 套件發佈之前，這是主要的安裝方式：
-
-```bash
-dsh plugin --profile web add github:r48n34/dsh-side-memo
-```
-
-> npm 套件目前尚未發佈，所以下面的 npm 安裝指令暫時無法使用。等它發佈後，這條較短的指令會安裝同一個外掛：
+`dsh-side-memo` 已[發佈到 npm](https://www.npmjs.com/package/dsh-side-memo)。透過你的 DSH 設定檔（profile）安裝：
 
 ```bash
 dsh plugin --profile web add dsh-side-memo
 ```
 
+也可以直接從這個儲存庫安裝——當需要的提交尚未發佈到 npm，或無法連線到 npm 時，使用 GitHub 形式：
+
+```bash
+dsh plugin --profile web add github:r48n34/dsh-side-memo
+```
+
 如果你的 DSH 執行的是 Desktop 設定檔（profile），請使用 **設定 → 外掛**（Settings → Plugins）中顯示的設定檔名稱（Desktop 應用程式通常是 `desktop`）：
 
 ```bash
-dsh plugin --profile desktop add github:r48n34/dsh-side-memo
+dsh plugin --profile desktop add dsh-side-memo
 ```
 
 安裝後，**側邊便箋** 圖示已經出現在工作階段標題列上——位於標題列最右側，包括尚未建立任何工作階段時（首屏）以及新工作階段歡迎畫面。你可以從那裡開啟它，也可以從工作階段標題列右側的功能區，或右側邊欄的加入/引導控制項開啟。如果沒看到圖示，請重新啟動 DSH 一次，讓新的外掛套件完成載入。
@@ -102,7 +103,7 @@ dsh plugin --profile desktop add github:r48n34/dsh-side-memo
 | `locale/en.json`、`locale/zh.json` | 外掛管理員的標題與說明 |
 | `icon.svg` | 外掛圖示 |
 
-可以用 DSH 外掛管理員（對此目錄呼叫 `install_bundle`）把它載入某個設定檔，或使用 [安裝](#安裝) 中的指令安裝。套件內容僅限上表所列檔案；npm tarball 中只包含執行時資源，以及 README 與 LICENSE。
+可以用 DSH 外掛管理員（對此目錄呼叫 `install_bundle`）把它載入某個設定檔，或使用 [安裝](#安裝) 中的指令安裝。套件內容僅限上表所列檔案；npm tarball 中除這些執行時資源外，還會附帶三個 README 與 LICENSE。
 
 ### 測試
 
