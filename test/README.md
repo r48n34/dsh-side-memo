@@ -53,9 +53,10 @@ Both forms execute the same tests and assertions.
 
 | File | Covers |
 | --- | --- |
-| `test/unit/hook.test.mjs` | The 49-key `window.__dsmTest` surface, exact `constants` values, existing keys preserved, gate inert when `window.__dsmTestHooks !== true`, per-instance isolation |
+| `test/unit/hook.test.mjs` | The 55-key `window.__dsmTest` surface (49 existing keys + 6 resize helpers), exact `constants` values, existing keys preserved, gate inert when `window.__dsmTestHooks !== true`, per-instance isolation |
 | `test/unit/labels.test.mjs` | `normalizeLabel`, `normalizeLabels`, `noteLabels`, `noteHasLabel`, `noteImageIds`, `imageCountLabel` |
-| `test/unit/content.test.mjs` | `textBlocksForBody`, `contentText`, `fitContent`, `normalizeContent`, CRLF handling, `MAX_BODY` truncation, image/text block boundaries |
+| `test/unit/content.test.mjs` | `textBlocksForBody`, `contentText`, `fitContent`, `normalizeContent`, CRLF handling, `MAX_BODY` truncation, image/text block boundaries, stored image display sizes (`width`/`height`) kept or dropped |
+| `test/unit/image-resize.test.mjs` | `normalizeImageSize`, `normalizeImageBlockSize`, `imageBlockSize`, `formatImageSize`, `parseImageSize`, and `resizeImageBox` across all eight handles — aspect-locked corners/edges, `Shift` free mode, `Alt` from-center mode, minimum/maximum clamping |
 | `test/unit/notes.test.mjs` | `normalizeNote` validation/truncation/defaults, `createNotesStore` load/save round-trip, `MAX_NOTES` cap, create/update/setFavorite/remove/importMany, persistence failures, image records through the fake IndexedDB |
 | `test/unit/xlsx.test.mjs` | UTF-8 encode/decode, CRC-32 check value, `xmlEscape`/`xmlDecode`, `xlsxCell`, store-only ZIP layout, `buildXlsxNotes` → `parseSheetRows` round-trip, `importTimestamp`, `importFavorite`, label/header parsing |
 | `test/unit/drag-drop.test.mjs` | `memoDragText`/`memoDragPayload`, `fillMemoDragData`, `readMemoDragPayload` (malformed JSON safety), `memoDragTypesInclude`, `composerEditorFor`, `planMemoDrop`, `insertMemoIntoComposer` |
@@ -89,6 +90,12 @@ Not covered by this unit suite (verified manually or by `test/e2e/`):
   contenteditable behavior, real `dragstart`/`drop` events, paste/copy.
 - Image pipeline in a real browser: `FileReader`, `createImageBitmap`, canvas
   re-encoding/quality limits, `prepareImageFile` for large files.
+- Image resize/transform overlay: pointer-drag handles and `Shift`/`Alt`
+  modifiers, arrow-key nudging, the `W × H` size badge, double-click/reset
+  restoration, and click/Escape selection are React + DOM behavior. The resize
+  math (`resizeImageBox` and the size helpers) is unit-tested; the interactive
+  layer is verified manually only — the browser e2e harness does not cover it
+  yet.
 - Real IndexedDB and `localStorage` behavior: quota failures, `pagehide`
   flush timing, multi-tab races. The suite uses in-memory fakes.
 - Real `.xlsx` files through the file picker / download path and Excel itself;

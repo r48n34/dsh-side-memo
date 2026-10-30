@@ -1,7 +1,7 @@
 {
   "name": "dsh-side-memo",
-  "version": "1.1.0",
-  "description": "Toggleable Side Memo notes panel for DeepSeek Harness: labels/tags, inline images, favorites pinned to the top, quick copy, drag a memo into the chat box to paste it, and Excel (.xlsx) import/export.",
+  "version": "1.2.0",
+  "description": "Toggleable Side Memo notes panel for DeepSeek Harness: labels/tags, resizable inline images, favorites pinned to the top, quick copy, drag a memo into the chat box to paste it, and Excel (.xlsx) import/export.",
   "keywords": [
     "dsh",
     "dsh-plugin",

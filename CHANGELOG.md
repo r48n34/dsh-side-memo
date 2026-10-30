@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.2.0 — 2026-10-30
+
+- Inline images in the memo editor now have a Photoshop-style resize/transform box. Click an image to select it — a brand-colored outline, eight resize handles and a `W × H` size badge appear — then drag a handle to resize (corners and edges keep the aspect ratio, `Shift`-drag distorts freely, `Alt`-drag resizes from the center), press the arrow keys to step by 8 px (`Shift`+arrow changes a single axis), or double-click the image / click the overlay's reset button to restore the original size. `Escape` or clicking elsewhere in the editor deselects it.
+- A memo now remembers each image's display size: it is saved with the note content in `localStorage`, survives reloads, and is clamped to 24–1,400 px. Resizing only changes how the stored image is shown — images are still downscaled to at most 1,400 px at quality 0.82 before storage, and no new dependencies were added.
 - The plugin is now written in TypeScript: the browser half lives in `src/client/` and the Host half in `src/host/`, compiled by `yarn build` (the TypeScript compiler only — no bundler) into the committed `client.js` and `index.js`. The published package is unchanged: same files and entry points, no runtime dependencies, and no build toolchain needed to install or run it. `yarn test` rebuilds the artifacts first, so the unit suite still exercises the shipped `client.js`. Development is pinned to Yarn 1 through `packageManager` and `yarn.lock`; the package itself is still published to the npm registry.
 - Internal: `yarn typecheck` type-checks the sources, CI also verifies the committed artifacts match a fresh build, and `devDependencies` are limited to `typescript` and `@types/react`.
 

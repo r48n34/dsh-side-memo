@@ -26,8 +26,12 @@ import type {
   DropPlan,
   EditorState,
   FittedContent,
+  ImageBlock,
   ImageMap,
   ImageRecord,
+  ImageResizeHandle,
+  ImageResizeInput,
+  ImageSize,
   ImageSource,
   ImportEntry,
   ImportedNote,
@@ -66,6 +70,12 @@ var MAX_LABEL_LEN = 24;
 // live in IndexedDB and the note content stores only ordered block ids.
 var MAX_IMAGES = 20;
 var MAX_IMAGE_DIMENSION = 1400;
+// A memo can show an image at any size between these bounds. The size is a
+// display-only transform stored next to the block id; the bytes in IndexedDB
+// are never re-encoded, so resetting is always lossless.
+var MIN_IMAGE_SIZE = 24;
+var MAX_IMAGE_SIZE = MAX_IMAGE_DIMENSION;
+var IMAGE_RESIZE_STEP = 8;
 var MAX_IMAGE_FILE_BYTES = 24 * 1024 * 1024;
 var MAX_IMAGE_DATA_BYTES = 1200 * 1024;
 var MAX_TOTAL_IMAGE_BYTES = 60 * 1024 * 1024;
@@ -174,7 +184,11 @@ var zh = {
   'image.budget': '图片存储已满，请删除一些图片便签。',
   'image.saveFailed': '图片无法保存到这个浏览器。',
   'image.unavailable': '图片数据不可用',
-  'image.loading': '正在加载图片…'
+  'image.loading': '正在加载图片…',
+  'image.resize': '调整图片大小',
+  'image.size': '尺寸 {width} × {height}',
+  'image.resetSize': '还原原始大小',
+  'image.sizeReset': '已还原图片大小'
 };
 
 var en = {
@@ -258,7 +272,11 @@ var en = {
   'image.budget': 'Image storage is full. Delete some image memos.',
   'image.saveFailed': 'The image could not be saved to this browser.',
   'image.unavailable': 'Image data unavailable',
-  'image.loading': 'Loading images…'
+  'image.loading': 'Loading images…',
+  'image.resize': 'Resize image',
+  'image.size': '{width} × {height}',
+  'image.resetSize': 'Reset to original size',
+  'image.sizeReset': 'Image size reset'
 };
 
 // ---------------------------------------------------------------------
@@ -363,11 +381,36 @@ var STYLE = [
   '.dsm-editor-body[data-dragging="true"]{box-shadow:inset 0 0 0 2px var(--dsw-alias-brand-primary);border-radius:8px}',
   '.dsm-editor-placeholder{position:absolute;top:4px;left:2px;right:2px;pointer-events:none;',
   'color:var(--dsw-alias-label-secondary);font-size:13.5px;line-height:1.6}',
-  '.dsm-image-block{position:relative;display:flex;margin:6px 0;max-width:100%;',
-  'border-radius:9px;background:var(--dsw-alias-bg-layer-2);padding:2px}',
+  '.dsm-image-block{position:relative;display:block;box-sizing:border-box;width:fit-content;max-width:100%;',
+  'margin:6px 0;border-radius:9px;background:var(--dsw-alias-bg-layer-2);padding:2px}',
   '.dsm-image-block img{display:block;max-width:100%;max-height:420px;border-radius:7px;',
   'object-fit:contain;border:1px solid var(--dsw-alias-border-l1)}',
-  '.dsm-image-missing{align-items:center;justify-content:center;min-height:64px;padding:12px;',
+  '.dsm-image-block[data-selected="true"]{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary)}',
+  '.dsm-image-block[data-resizing="true"]{cursor:nwse-resize}',
+  '.dsm-image-handle{position:absolute;width:11px;height:11px;box-sizing:border-box;border-radius:3px;',
+  'border:1px solid var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-1);',
+  'opacity:0;pointer-events:none;touch-action:none;z-index:2}',
+  '.dsm-image-block[data-selected="true"] .dsm-image-handle{opacity:1;pointer-events:auto}',
+  '.dsm-image-handle[data-image-handle="nw"]{left:-6px;top:-6px;cursor:nwse-resize}',
+  '.dsm-image-handle[data-image-handle="n"]{left:50%;top:-6px;margin-left:-5.5px;cursor:ns-resize}',
+  '.dsm-image-handle[data-image-handle="ne"]{right:-6px;top:-6px;cursor:nesw-resize}',
+  '.dsm-image-handle[data-image-handle="e"]{right:-6px;top:50%;margin-top:-5.5px;cursor:ew-resize}',
+  '.dsm-image-handle[data-image-handle="se"]{right:-6px;bottom:-6px;cursor:nwse-resize}',
+  '.dsm-image-handle[data-image-handle="s"]{left:50%;bottom:-6px;margin-left:-5.5px;cursor:ns-resize}',
+  '.dsm-image-handle[data-image-handle="sw"]{left:-6px;bottom:-6px;cursor:nesw-resize}',
+  '.dsm-image-handle[data-image-handle="w"]{left:-6px;top:50%;margin-top:-5.5px;cursor:ew-resize}',
+  '.dsm-image-size{position:absolute;left:6px;bottom:6px;padding:1px 5px;border-radius:5px;',
+  'background:var(--dsw-specific-menu);color:var(--dsw-alias-label-primary);font-size:10.5px;',
+  'line-height:1.5;font-variant-numeric:tabular-nums;pointer-events:none;opacity:0;z-index:2}',
+  '.dsm-image-block[data-selected="true"] .dsm-image-size{opacity:1}',
+  '.dsm-image-reset{position:absolute;right:8px;bottom:8px;display:none;align-items:center;',
+  'justify-content:center;padding:2px 7px;border:1px solid var(--dsw-alias-border-l1);border-radius:999px;',
+  'background:var(--dsw-specific-menu);color:var(--dsw-alias-label-primary);font:inherit;font-size:11px;',
+  'line-height:1.4;cursor:pointer;z-index:2}',
+  '.dsm-image-block[data-selected="true"][data-image-sized="true"] .dsm-image-reset{display:flex}',
+  '.dsm-image-reset:hover{color:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary)}',
+  '.dsm-image-reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
+  '.dsm-image-missing{display:flex;align-items:center;justify-content:center;min-height:64px;padding:12px;',
   'border:1px dashed var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);font-size:12px}',
   '@media (hover:none){.dsm-image-remove{opacity:.85}}',
   '.dsm-image-remove{position:absolute;top:8px;right:8px;display:flex;align-items:center;justify-content:center;',
@@ -667,7 +710,13 @@ function normalizeContent(content: unknown, body: unknown): FittedContent {
       if (block.type === 'text' && typeof block.text === 'string') {
         blocks.push({ type: 'text', text: block.text.replace(/\r\n?/g, '\n') });
       } else if (block.type === 'image' && typeof block.id === 'string' && block.id.length > 0) {
-        blocks.push({ type: 'image', id: block.id.slice(0, 80) });
+        var imageBlock: ImageBlock = { type: 'image', id: block.id.slice(0, 80) };
+        var imageSize = normalizeImageBlockSize(block);
+        if (imageSize !== null) {
+          imageBlock.width = imageSize.width;
+          imageBlock.height = imageSize.height;
+        }
+        blocks.push(imageBlock);
       }
     }
   }
@@ -695,6 +744,132 @@ function noteImageCount(note: unknown): number {
 
 function imageCountLabel(t: Translator, count: number): string {
   return t(count === 1 ? 'image.count.one' : 'image.count.other', { count: count, max: MAX_IMAGES });
+}
+
+// ---------------------------------------------------------------------
+// Image display size (the memo equivalent of a Photoshop transform box).
+// The size is a pure presentation transform stored beside the block id;
+// the image bytes in IndexedDB are never re-encoded, so resetting is
+// always lossless and free.
+// ---------------------------------------------------------------------
+
+/** Unit vector for each resize handle: which axes it moves and in which sign. */
+var IMAGE_HANDLE_AXES: Record<string, { x: number; y: number }> = {
+  nw: { x: -1, y: -1 },
+  n: { x: 0, y: -1 },
+  ne: { x: 1, y: -1 },
+  e: { x: 1, y: 0 },
+  se: { x: 1, y: 1 },
+  s: { x: 0, y: 1 },
+  sw: { x: -1, y: 1 },
+  w: { x: -1, y: 0 }
+};
+
+/** Clamp one display dimension into [MIN_IMAGE_SIZE, max]. */
+function clampImageDimension(value: number, max: number): number {
+  var rounded = Math.round(value);
+  if (!(rounded > 0)) return MIN_IMAGE_SIZE;
+  if (rounded < MIN_IMAGE_SIZE) return MIN_IMAGE_SIZE;
+  if (rounded > max) return max;
+  return rounded;
+}
+
+/**
+ * Normalize one stored display dimension. Returns 0 for anything that is not
+ * a positive finite number, which callers read as "size not set".
+ */
+function normalizeImageSize(value: unknown): number {
+  if (typeof value !== 'number' || !isFinite(value)) return 0;
+  var rounded = Math.round(value);
+  if (!(rounded > 0)) return 0;
+  if (rounded < MIN_IMAGE_SIZE) return MIN_IMAGE_SIZE;
+  if (rounded > MAX_IMAGE_SIZE) return MAX_IMAGE_SIZE;
+  return rounded;
+}
+
+/** Read the optional display size of a raw content block; both or nothing. */
+function normalizeImageBlockSize(raw: unknown): ImageSize | null {
+  if (raw === null || typeof raw !== 'object') return null;
+  var value = raw as Record<string, unknown>;
+  var width = normalizeImageSize(value.width);
+  var height = normalizeImageSize(value.height);
+  if (width === 0 || height === 0) return null;
+  return { width: width, height: height };
+}
+
+/** Display size of a normalized content block, or null when it is unset. */
+function imageBlockSize(block: unknown): ImageSize | null {
+  return normalizeImageBlockSize(block);
+}
+
+function formatImageSize(size: ImageSize): string {
+  return size.width + 'x' + size.height;
+}
+
+function parseImageSize(text: unknown): ImageSize | null {
+  if (typeof text !== 'string') return null;
+  var match = /^(\d{1,4})x(\d{1,4})$/.exec(text);
+  if (match === null) return null;
+  var width = normalizeImageSize(parseInt(match[1], 10));
+  var height = normalizeImageSize(parseInt(match[2], 10));
+  if (width === 0 || height === 0) return null;
+  return { width: width, height: height };
+}
+
+/** Fill the `{width}` / `{height}` placeholders of the size badge label. */
+function formatImageSizeLabel(template: string, size: ImageSize): string {
+  return template.replace('{width}', String(size.width)).replace('{height}', String(size.height));
+}
+
+/**
+ * The resize math behind the transform handles.
+ *
+ * The default mode scales the box: every handle keeps the current aspect
+ * ratio (a corner takes the axis that moved more, an edge scales from its own
+ * axis). `free` (Shift) changes only the axes the handle owns, which is the
+ * "distort" mode. `fromCenter` (Alt) applies the pointer delta on both sides
+ * of the center, so the box grows by twice the delta.
+ */
+function resizeImageBox(input: ImageResizeInput): ImageSize {
+  var axes = IMAGE_HANDLE_AXES[input.handle];
+  if (axes === undefined) axes = IMAGE_HANDLE_AXES.se;
+  var width = normalizeImageSize(input.width) || MIN_IMAGE_SIZE;
+  var height = normalizeImageSize(input.height) || MIN_IMAGE_SIZE;
+  var limitWidth = normalizeImageSize(input.maxWidth) || MAX_IMAGE_SIZE;
+  var limitHeight = normalizeImageSize(input.maxHeight) || MAX_IMAGE_SIZE;
+  if (limitWidth > MAX_IMAGE_SIZE) limitWidth = MAX_IMAGE_SIZE;
+  if (limitHeight > MAX_IMAGE_SIZE) limitHeight = MAX_IMAGE_SIZE;
+  var mirror = input.fromCenter === true ? 2 : 1;
+  var dx = typeof input.dx === 'number' && isFinite(input.dx) ? input.dx : 0;
+  var dy = typeof input.dy === 'number' && isFinite(input.dy) ? input.dy : 0;
+  var deltaX = axes.x === 0 ? 0 : axes.x * dx * mirror;
+  var deltaY = axes.y === 0 ? 0 : axes.y * dy * mirror;
+  if (input.free === true) {
+    return {
+      width: axes.x === 0 ? width : clampImageDimension(width + deltaX, limitWidth),
+      height: axes.y === 0 ? height : clampImageDimension(height + deltaY, limitHeight)
+    };
+  }
+  var factorX = axes.x === 0 ? 1 : (width + deltaX) / width;
+  var factorY = axes.y === 0 ? 1 : (height + deltaY) / height;
+  var factor: number;
+  if (axes.x !== 0 && axes.y !== 0) {
+    factor = Math.abs(factorX - 1) >= Math.abs(factorY - 1) ? factorX : factorY;
+  } else {
+    factor = axes.x !== 0 ? factorX : factorY;
+  }
+  // A degenerate factor (NaN) means the drag maths broke down, not that the
+  // user asked for an unchanged box: non-positive factors are clamped to the
+  // smallest allowed scale below, which is what shrinking past zero means.
+  if (!isFinite(factor)) factor = 1;
+  var smallest = Math.max(MIN_IMAGE_SIZE / width, MIN_IMAGE_SIZE / height);
+  var largest = Math.min(limitWidth / width, limitHeight / height);
+  if (factor < smallest) factor = smallest;
+  if (factor > largest) factor = largest;
+  return {
+    width: clampImageDimension(width * factor, limitWidth),
+    height: clampImageDimension(height * factor, limitHeight)
+  };
 }
 
 /**
@@ -1500,9 +1675,13 @@ function readEditorState(root: HTMLElement): EditorState {
     pendingHasContent = false;
   }
 
-  function pushImage(id: string): void {
+  function pushImage(id: string, size: ImageSize | null): void {
     flushPending(false);
-    blocks.push({ type: 'image', id: id });
+    if (size === null) {
+      blocks.push({ type: 'image', id: id });
+      return;
+    }
+    blocks.push({ type: 'image', id: id, width: size.width, height: size.height });
   }
 
   function consumeInline(node: Node): void {
@@ -1514,10 +1693,12 @@ function readEditorState(root: HTMLElement): EditorState {
     }
     if (node.nodeType !== 1) return;
     var element = node as Element;
+    // Selection chrome (handles, size badge) is decoration, never text.
+    if (typeof element.getAttribute === 'function' && element.getAttribute('data-image-chrome') !== null) return;
     var tag = element.tagName.toUpperCase();
     if (tag === 'IMG') {
       var id = element.getAttribute('data-image-id');
-      if (id !== null && id !== '') pushImage(id);
+      if (id !== null && id !== '') pushImage(id, parseImageSize(element.getAttribute('data-image-size')));
       return;
     }
     if (tag === 'BR') {
@@ -1532,7 +1713,7 @@ function readEditorState(root: HTMLElement): EditorState {
   function consumeBlock(block: HTMLElement): void {
     var placeholderId = typeof block.getAttribute === 'function' ? block.getAttribute('data-image-id') : null;
     if (placeholderId !== null && placeholderId !== '') {
-      pushImage(placeholderId);
+      pushImage(placeholderId, parseImageSize(block.getAttribute('data-image-size')));
       return;
     }
     var hasImage = typeof block.querySelector === 'function' && block.querySelector('img[data-image-id]') !== null;
@@ -1592,16 +1773,94 @@ function fillTextBlock(container: HTMLElement, text: string): void {
   }
 }
 
-function createImageBlockElement(record: ImageRecord, removeLabel: string, altLabel: string): HTMLElement {
-  var block = document.createElement('div');
+/** Human labels for the image transform overlay. */
+interface ImageChromeLabels {
+  resize: string;
+  resetSize: string;
+  size: string;
+}
+
+var DEFAULT_IMAGE_CHROME: ImageChromeLabels = {
+  resize: 'Resize image',
+  resetSize: 'Reset to original size',
+  size: '{width} × {height}'
+};
+
+var IMAGE_HANDLE_ORDER: string[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+
+type ImageBlockHost = HTMLElement & { dsmSizeTemplate?: string };
+
+function updateImageSizeBadge(block: ImageBlockHost, size: ImageSize | null): void {
+  var badge = block.querySelector('[data-image-size-badge]');
+  if (badge === null) return;
+  badge.textContent = size === null ? '' : formatImageSizeLabel(block.dsmSizeTemplate || DEFAULT_IMAGE_CHROME.size, size);
+}
+
+/**
+ * Apply (or clear) the display size of one image block. The size lives in
+ * `data-image-size` on the img so the serializer can read it back; the inline
+ * width + aspect-ratio keep the picture undistorted when the panel is narrow.
+ */
+function applyImageDisplaySize(block: HTMLElement, image: HTMLImageElement, size: ImageSize | null): void {
+  var host = block as ImageBlockHost;
+  if (size === null) {
+    block.removeAttribute('data-image-size');
+    block.removeAttribute('data-image-sized');
+    image.removeAttribute('data-image-size');
+    image.style.removeProperty('width');
+    image.style.removeProperty('height');
+    image.style.removeProperty('aspect-ratio');
+    image.style.removeProperty('max-height');
+    updateImageSizeBadge(host, null);
+    return;
+  }
+  var text = formatImageSize(size);
+  block.setAttribute('data-image-size', text);
+  block.setAttribute('data-image-sized', 'true');
+  image.setAttribute('data-image-size', text);
+  image.style.setProperty('width', size.width + 'px');
+  image.style.setProperty('height', 'auto');
+  image.style.setProperty('aspect-ratio', size.width + ' / ' + size.height);
+  image.style.setProperty('max-height', 'none');
+  updateImageSizeBadge(host, size);
+}
+
+function createImageBlockElement(record: ImageRecord, removeLabel: string, altLabel: string, chrome?: ImageChromeLabels, size?: ImageSize | null): HTMLElement {
+  var labels = chrome === undefined ? DEFAULT_IMAGE_CHROME : chrome;
+  var block = document.createElement('div') as ImageBlockHost;
   block.className = 'dsm-image-block';
   block.setAttribute('contenteditable', 'false');
+  block.dsmSizeTemplate = labels.size;
   var image = document.createElement('img');
   image.src = record.src;
   image.alt = typeof altLabel === 'string' ? altLabel : '';
   image.draggable = false;
   image.setAttribute('data-image-id', record.id);
   block.appendChild(image);
+  for (var handleIndex = 0; handleIndex < IMAGE_HANDLE_ORDER.length; handleIndex += 1) {
+    var handle = document.createElement('span');
+    handle.className = 'dsm-image-handle';
+    handle.setAttribute('data-image-handle', IMAGE_HANDLE_ORDER[handleIndex]);
+    handle.setAttribute('data-image-chrome', 'true');
+    handle.setAttribute('title', labels.resize);
+    handle.setAttribute('aria-hidden', 'true');
+    block.appendChild(handle);
+  }
+  var badge = document.createElement('span');
+  badge.className = 'dsm-image-size';
+  badge.setAttribute('data-image-size-badge', 'true');
+  badge.setAttribute('data-image-chrome', 'true');
+  badge.setAttribute('aria-hidden', 'true');
+  block.appendChild(badge);
+  var reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'dsm-image-reset';
+  reset.setAttribute('data-image-reset', record.id);
+  reset.setAttribute('data-image-chrome', 'true');
+  reset.setAttribute('title', labels.resetSize);
+  reset.setAttribute('aria-label', labels.resetSize);
+  reset.textContent = '\u21ba';
+  block.appendChild(reset);
   var remove = document.createElement('button');
   remove.type = 'button';
   remove.className = 'dsm-image-remove';
@@ -1610,18 +1869,20 @@ function createImageBlockElement(record: ImageRecord, removeLabel: string, altLa
   remove.setAttribute('title', removeLabel);
   remove.textContent = '\u00d7';
   block.appendChild(remove);
+  applyImageDisplaySize(block, image, size === undefined ? null : size);
   return block;
 }
 
-function buildEditorDom(root: HTMLElement, note: { content: NoteBlock[] }, images: ImageMap, removeLabel: string, unavailableLabel: string, altLabel: string): void {
+function buildEditorDom(root: HTMLElement, note: { content: NoteBlock[] }, images: ImageMap, removeLabel: string, unavailableLabel: string, altLabel: string, chrome?: ImageChromeLabels): void {
   root.textContent = '';
   var content = note.content;
   for (var index = 0; index < content.length; index += 1) {
     var block = content[index];
     if (block.type === 'image') {
       var record = images[block.id];
+      var size = imageBlockSize(block);
       if (record !== undefined) {
-        root.appendChild(createImageBlockElement(record, removeLabel, altLabel));
+        root.appendChild(createImageBlockElement(record, removeLabel, altLabel, chrome, size));
         continue;
       }
       // Keep the reference alive even when its bytes cannot be read right
@@ -1630,6 +1891,7 @@ function buildEditorDom(root: HTMLElement, note: { content: NoteBlock[] }, image
       placeholder.className = 'dsm-image-block dsm-image-missing';
       placeholder.setAttribute('contenteditable', 'false');
       placeholder.setAttribute('data-image-id', block.id);
+      if (size !== null) placeholder.setAttribute('data-image-size', formatImageSize(size));
       if (typeof unavailableLabel === 'string' && unavailableLabel !== '') placeholder.textContent = unavailableLabel;
       root.appendChild(placeholder);
       continue;
@@ -1662,8 +1924,8 @@ function topBlockFor(root: HTMLElement, node: Node): HTMLElement | null {
   return current !== null && current.nodeType === 1 ? (current as HTMLElement) : null;
 }
 
-function insertImageIntoEditor(root: HTMLElement, record: ImageRecord, removeLabel: string, altLabel: string): void {
-  var imageBlock = createImageBlockElement(record, removeLabel, altLabel);
+function insertImageIntoEditor(root: HTMLElement, record: ImageRecord, removeLabel: string, altLabel: string, chrome?: ImageChromeLabels): void {
+  var imageBlock = createImageBlockElement(record, removeLabel, altLabel, chrome, null);
   var tail = document.createElement('div');
   tail.appendChild(document.createElement('br'));
   var range = caretRangeIn(root);
@@ -2639,6 +2901,15 @@ function NotesBody(props: NotesBodyProps): React.ReactElement | null {
   var editorRef = React.useRef<HTMLDivElement | null>(null);
   var titleInputRef = React.useRef<HTMLInputElement | null>(null);
   var builtEditorRef = React.useRef('');
+  var imageDragRef = React.useRef<{
+    block: HTMLElement;
+    image: HTMLImageElement;
+    handle: ImageResizeHandle;
+    startX: number;
+    startY: number;
+    start: ImageSize;
+    maxWidth: number;
+  } | null>(null);
   var dropHandlerRef = React.useRef<((event: DragEvent) => void) | null>(null);
   var composerHighlightRef = React.useRef<HTMLElement | null>(null);
   var draggingState = React.useState(false);
@@ -2955,8 +3226,11 @@ function NotesBody(props: NotesBodyProps): React.ReactElement | null {
     }
     var key = editing.id + ':' + (snapshot.imagesReady ? '1' : '0');
     if (builtEditorRef.current === key) return;
+    // A rebuilt tree has no live transform box and no live pointer drag.
+    endImageDrag();
+    clearImageSelection();
     builtEditorRef.current = key;
-    buildEditorDom(root, editing, snapshot.images, t('image.remove'), t('image.unavailable'), t('image.memo'));
+    buildEditorDom(root, editing, snapshot.images, t('image.remove'), t('image.unavailable'), t('image.memo'), chromeLabels());
   }, [editing === undefined ? null : editing.id, snapshot.imagesReady]);
 
   // Label editing state belongs to the open memo, never to the previous one.
@@ -3237,7 +3511,7 @@ function NotesBody(props: NotesBodyProps): React.ReactElement | null {
       // IME input and execCommand insertions cannot be cancelled through
       // beforeinput, so clip the DOM back to the stored limit instead of
       // letting it diverge from what gets saved.
-      buildEditorDom(root, { content: state.content }, snapshot.images, t('image.remove'), t('image.unavailable'), t('image.memo'));
+      buildEditorDom(root, { content: state.content }, snapshot.images, t('image.remove'), t('image.unavailable'), t('image.memo'), chromeLabels());
       moveCaretToEnd(root);
       setAnnounce(t('editor.limit', { max: MAX_BODY }));
     }
@@ -3322,7 +3596,7 @@ function NotesBody(props: NotesBodyProps): React.ReactElement | null {
           /* keep the current caret when the saved range is stale */
         }
       }
-      insertImageIntoEditor(root, stored.record, t('image.remove'), t('image.memo'));
+      insertImageIntoEditor(root, stored.record, t('image.remove'), t('image.memo'), chromeLabels());
       range = caretRangeIn(root);
       syncEditor();
       added += 1;
@@ -3420,22 +3694,233 @@ function NotesBody(props: NotesBodyProps): React.ReactElement | null {
     syncEditor();
   }
 
+  // ---- image transform: selection, drag resize, keyboard nudge ----------
+
+  function chromeLabels(): ImageChromeLabels {
+    return {
+      resize: t('image.resize'),
+      resetSize: t('image.resetSize'),
+      size: t('image.size')
+    };
+  }
+
+  function selectedImageBlock(): HTMLElement | null {
+    var root = editorRef.current;
+    if (root === null) return null;
+    return root.querySelector('.dsm-image-block[data-selected="true"]') as HTMLElement | null;
+  }
+
+  function clearImageSelection(): void {
+    var root = editorRef.current;
+    if (root === null) return;
+    var selected = root.querySelectorAll('.dsm-image-block[data-selected="true"]');
+    for (var index = 0; index < selected.length; index += 1) {
+      selected[index].removeAttribute('data-selected');
+      selected[index].removeAttribute('data-resizing');
+    }
+  }
+
+  function selectImageBlock(block: HTMLElement | null): void {
+    if (block === null) return;
+    if (block.getAttribute('data-selected') === 'true') return;
+    clearImageSelection();
+    block.setAttribute('data-selected', 'true');
+  }
+
+  /** Stored size, else the rendered box, else the intrinsic size fitted to the cap. */
+  function imageSizeOfBlock(block: HTMLElement): ImageSize | null {
+    var stored = parseImageSize(block.getAttribute('data-image-size'));
+    if (stored !== null) return stored;
+    var image = block.querySelector('img[data-image-id]') as HTMLImageElement | null;
+    if (image === null) return null;
+    var width = 0;
+    var height = 0;
+    if (typeof image.getBoundingClientRect === 'function') {
+      var rect = image.getBoundingClientRect();
+      width = Math.round(rect.width);
+      height = Math.round(rect.height);
+    }
+    if (!(width > 0) || !(height > 0)) {
+      width = typeof image.naturalWidth === 'number' ? image.naturalWidth : 0;
+      height = typeof image.naturalHeight === 'number' ? image.naturalHeight : 0;
+    }
+    if (!(width > 0) || !(height > 0)) return null;
+    var scale = Math.min(1, MAX_IMAGE_SIZE / Math.max(width, height));
+    return { width: normalizeImageSize(Math.round(width * scale)), height: normalizeImageSize(Math.round(height * scale)) };
+  }
+
+  function imageDragLimitWidth(): number {
+    var root = editorRef.current;
+    if (root === null) return MAX_IMAGE_SIZE;
+    var available = Math.floor(root.clientWidth) - 10;
+    if (!(available > MIN_IMAGE_SIZE)) return MIN_IMAGE_SIZE;
+    return Math.min(MAX_IMAGE_SIZE, available);
+  }
+
+  function onImageDragMove(event: PointerEvent): void {
+    var drag = imageDragRef.current;
+    if (drag === null) return;
+    event.preventDefault();
+    var size = resizeImageBox({
+      width: drag.start.width,
+      height: drag.start.height,
+      handle: drag.handle,
+      dx: event.clientX - drag.startX,
+      dy: event.clientY - drag.startY,
+      free: event.shiftKey === true,
+      fromCenter: event.altKey === true,
+      maxWidth: drag.maxWidth,
+      maxHeight: MAX_IMAGE_SIZE
+    });
+    applyImageDisplaySize(drag.block, drag.image, size);
+  }
+
+  function endImageDrag(): void {
+    var drag = imageDragRef.current;
+    if (drag === null) return;
+    imageDragRef.current = null;
+    drag.block.removeAttribute('data-resizing');
+    if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+      window.removeEventListener('pointermove', onImageDragMove);
+      window.removeEventListener('pointerup', onImageDragEnd);
+      window.removeEventListener('pointercancel', onImageDragEnd);
+    }
+  }
+
+  function onImageDragEnd(): void {
+    var drag = imageDragRef.current;
+    if (drag === null) return;
+    var size = parseImageSize(drag.block.getAttribute('data-image-size'));
+    endImageDrag();
+    if (size !== null) setAnnounce(formatImageSizeLabel(t('image.size'), size));
+    syncEditor();
+  }
+
+  function handleEditorPointerDown(event: React.PointerEvent<HTMLDivElement>): void {
+    var target = event.target as Element;
+    if (target === null || target === undefined || typeof target.closest !== 'function') return;
+    var handleElement = target.closest('[data-image-handle]');
+    if (handleElement === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    var block = handleElement.closest('.dsm-image-block') as HTMLElement | null;
+    if (block === null) return;
+    var image = block.querySelector('img[data-image-id]') as HTMLImageElement | null;
+    if (image === null) return;
+    var handleName = handleElement.getAttribute('data-image-handle');
+    if (handleName === null || IMAGE_HANDLE_AXES[handleName] === undefined) return;
+    var start = imageSizeOfBlock(block);
+    if (start === null) return;
+    selectImageBlock(block);
+    imageDragRef.current = {
+      block: block,
+      image: image,
+      handle: handleName as ImageResizeHandle,
+      startX: event.clientX,
+      startY: event.clientY,
+      start: start,
+      maxWidth: imageDragLimitWidth()
+    };
+    block.setAttribute('data-resizing', 'true');
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('pointermove', onImageDragMove);
+      window.addEventListener('pointerup', onImageDragEnd);
+      window.addEventListener('pointercancel', onImageDragEnd);
+    }
+  }
+
+  /** Arrow keys nudge the selected image by IMAGE_RESIZE_STEP px. */
+  function handleSelectedImageKeyDown(event: React.KeyboardEvent<HTMLDivElement>): boolean {
+    var block = selectedImageBlock();
+    if (block === null) return false;
+    var handle: ImageResizeHandle = 'se';
+    var dx = 0;
+    var dy = 0;
+    if (event.key === 'ArrowLeft') {
+      handle = 'w';
+      dx = -IMAGE_RESIZE_STEP;
+    } else if (event.key === 'ArrowRight') {
+      handle = 'e';
+      dx = IMAGE_RESIZE_STEP;
+    } else if (event.key === 'ArrowUp') {
+      handle = 'n';
+      dy = -IMAGE_RESIZE_STEP;
+    } else if (event.key === 'ArrowDown') {
+      handle = 's';
+      dy = IMAGE_RESIZE_STEP;
+    } else {
+      return false;
+    }
+    var image = block.querySelector('img[data-image-id]') as HTMLImageElement | null;
+    var start = imageSizeOfBlock(block);
+    if (image === null || start === null) return false;
+    event.preventDefault();
+    var size = resizeImageBox({
+      width: start.width,
+      height: start.height,
+      handle: handle,
+      dx: dx,
+      dy: dy,
+      free: event.shiftKey === true,
+      fromCenter: event.altKey === true,
+      maxWidth: imageDragLimitWidth(),
+      maxHeight: MAX_IMAGE_SIZE
+    });
+    applyImageDisplaySize(block, image, size);
+    setAnnounce(formatImageSizeLabel(t('image.size'), size));
+    syncEditor();
+    return true;
+  }
+
+  function resetImageSize(block: HTMLElement | null, announceReset: boolean): void {
+    if (block === null) return;
+    var image = block.querySelector('img[data-image-id]') as HTMLImageElement | null;
+    if (image === null) return;
+    applyImageDisplaySize(block, image, null);
+    if (announceReset) setAnnounce(t('image.sizeReset'));
+    syncEditor();
+  }
+
   function handleEditorClick(event: React.MouseEvent<HTMLDivElement>): void {
     var target = event.target as Element;
     if (target === null || target === undefined || typeof target.closest !== 'function') return;
     var remove = target.closest('[data-image-remove]');
-    if (remove === null) return;
-    event.preventDefault();
-    var block = typeof remove.closest === 'function' ? remove.closest('.dsm-image-block') : null;
-    if (block !== null && block.parentNode !== null) block.parentNode.removeChild(block);
-    var root = editorRef.current;
-    if (root !== null && root.childNodes.length === 0) {
-      var empty = document.createElement('div');
-      empty.appendChild(document.createElement('br'));
-      root.appendChild(empty);
+    if (remove !== null) {
+      event.preventDefault();
+      var block = typeof remove.closest === 'function' ? remove.closest('.dsm-image-block') : null;
+      if (block !== null && block.parentNode !== null) block.parentNode.removeChild(block);
+      var root = editorRef.current;
+      if (root !== null && root.childNodes.length === 0) {
+        var empty = document.createElement('div');
+        empty.appendChild(document.createElement('br'));
+        root.appendChild(empty);
+      }
+      syncEditor();
+      setAnnounce(t('image.removed'));
+      return;
     }
-    syncEditor();
-    setAnnounce(t('image.removed'));
+    var reset = target.closest('[data-image-reset]');
+    if (reset !== null) {
+      event.preventDefault();
+      resetImageSize(typeof reset.closest === 'function' ? (reset.closest('.dsm-image-block') as HTMLElement | null) : null, true);
+      return;
+    }
+    var imageBlock = target.closest('.dsm-image-block') as HTMLElement | null;
+    if (imageBlock !== null) {
+      selectImageBlock(imageBlock);
+      return;
+    }
+    clearImageSelection();
+  }
+
+  function handleEditorDoubleClick(event: React.MouseEvent<HTMLDivElement>): void {
+    var target = event.target as Element;
+    if (target === null || target === undefined || typeof target.closest !== 'function') return;
+    var block = target.closest('.dsm-image-block') as HTMLElement | null;
+    if (block === null || block.querySelector('img[data-image-id]') === null) return;
+    event.preventDefault();
+    selectImageBlock(block);
+    resetImageSize(block, true);
   }
 
   function handleEditorBeforeInput(event: React.FormEvent<HTMLDivElement> & { inputType?: string; data?: string | null }): void {
@@ -3470,8 +3955,15 @@ function NotesBody(props: NotesBodyProps): React.ReactElement | null {
 
   function handleEditorKeyDown(event: React.KeyboardEvent<HTMLDivElement> & { isComposing?: boolean }): void {
     var composing = event.isComposing === true || (event.nativeEvent !== undefined && event.nativeEvent.isComposing === true);
-    if (event.key === 'Escape' && !composing) {
+    if (composing) return;
+    if (handleSelectedImageKeyDown(event)) return;
+    if (event.key === 'Escape') {
       event.preventDefault();
+      // Escape leaves the image transform box before it leaves the memo.
+      if (selectedImageBlock() !== null) {
+        clearImageSelection();
+        return;
+      }
       closeEditor();
     }
   }
@@ -3691,6 +4183,8 @@ function NotesBody(props: NotesBodyProps): React.ReactElement | null {
           onDrop: handleEditorDrop,
           onDragOver: handleEditorDragOver,
           onDragLeave: handleEditorDragLeave,
+          onPointerDown: handleEditorPointerDown,
+          onDoubleClick: handleEditorDoubleClick,
           onClick: handleEditorClick
         })
       ),
@@ -4411,6 +4905,9 @@ if (typeof window !== 'undefined' && window.__dsmTestHooks === true) {
       MAX_LABEL_LEN: MAX_LABEL_LEN,
       MAX_IMAGES: MAX_IMAGES,
       MAX_IMAGE_DIMENSION: MAX_IMAGE_DIMENSION,
+      MIN_IMAGE_SIZE: MIN_IMAGE_SIZE,
+      MAX_IMAGE_SIZE: MAX_IMAGE_SIZE,
+      IMAGE_RESIZE_STEP: IMAGE_RESIZE_STEP,
       MAX_IMAGE_FILE_BYTES: MAX_IMAGE_FILE_BYTES,
       MAX_IMAGE_DATA_BYTES: MAX_IMAGE_DATA_BYTES,
       MAX_TOTAL_IMAGE_BYTES: MAX_TOTAL_IMAGE_BYTES,
@@ -4429,6 +4926,12 @@ if (typeof window !== 'undefined' && window.__dsmTestHooks === true) {
     noteLabels: noteLabels,
     noteHasLabel: noteHasLabel,
     imageCountLabel: imageCountLabel,
+    normalizeImageSize: normalizeImageSize,
+    normalizeImageBlockSize: normalizeImageBlockSize,
+    imageBlockSize: imageBlockSize,
+    formatImageSize: formatImageSize,
+    parseImageSize: parseImageSize,
+    resizeImageBox: resizeImageBox,
     textBlocksForBody: textBlocksForBody,
     contentText: contentText,
     noteImageIds: noteImageIds,

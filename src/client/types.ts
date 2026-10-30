@@ -14,6 +14,34 @@ export interface TextBlock {
 export interface ImageBlock {
   type: 'image';
   id: string;
+  /**
+   * Optional display size in CSS pixels. Omitted means "natural size, fitted
+   * to the editor width"; the stored image bytes are never re-encoded, so this
+   * is purely how the image is presented inside a memo.
+   */
+  width?: number;
+  height?: number;
+}
+
+export interface ImageSize {
+  width: number;
+  height: number;
+}
+
+export type ImageResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+
+export interface ImageResizeInput {
+  width: number;
+  height: number;
+  handle: ImageResizeHandle;
+  dx: number;
+  dy: number;
+  /** Shift: change each affected axis independently instead of scaling. */
+  free?: boolean;
+  /** Alt: resize symmetrically around the center. */
+  fromCenter?: boolean;
+  maxWidth?: number;
+  maxHeight?: number;
 }
 
 export type NoteBlock = TextBlock | ImageBlock;

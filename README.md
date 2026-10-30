@@ -9,7 +9,7 @@
 A lightweight, toggleable **right-side notes panel** for [DeepSeek Harness](https://deepseek.com/harness). Jot memos while you chat — text, inline images, and labels — copy them with one click, star favorites to keep them pinned at the top, and move everything in or out as an Excel workbook.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.1.0-4D6BFE)
+![Version](https://img.shields.io/badge/version-1.2.0-4D6BFE)
 [![npm](https://img.shields.io/npm/v/dsh-side-memo?label=npm&color=4D6BFE)](https://www.npmjs.com/package/dsh-side-memo)
 [![CI](https://github.com/r48n34/dsh-side-memo/actions/workflows/ci.yml/badge.svg)](https://github.com/r48n34/dsh-side-memo/actions/workflows/ci.yml)
 ![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.x-4D6BFE)
@@ -47,6 +47,7 @@ To remove it, use **Settings → Plugins** in DSH (or the equivalent `dsh plugin
 - **Drag into chat:** Drag a memo from the list onto the chat box to paste its text into the message you are writing.
 - **Stay organized:** Search notes, add labels, filter or group by label, and pin favorites.
 - **Add images:** Paste or drag images into notes, or use the image button.
+- **Resize images:** Select an inline image for a Photoshop-style transform box, then drag a handle, nudge with the arrow keys, or reset it to its original size.
 - **Copy and transfer:** Copy notes in one click; import or export notes as Excel workbooks.
 - **Save locally:** Notes and images stay in your browser and are available across Sessions.
 
@@ -54,11 +55,11 @@ To remove it, use **Settings → Plugins** in DSH (or the equivalent `dsh plugin
 
 1. Click the **Side Memo** icon at the right of the conversation header to open or close the panel.
 2. Click **New** and start writing. Changes save automatically; you can also create a note from the editor.
-3. Add labels below the title, or paste, drag in, or insert an image. Use the star to pin a favorite and the copy icon to copy a note.
+3. Add labels below the title, or paste, drag in, or insert an image. Click an image to select it: a brand-colored outline, eight resize handles and a `W × H` size badge appear. Drag a handle to resize — corners and edges keep the aspect ratio, `Shift`-drag distorts freely and `Alt`-drag resizes from the center — press the arrow keys to step by 8 px (`Shift`+arrow changes one axis only), and double-click the image or click the overlay's reset button to restore its original size. Press `Escape` or click elsewhere in the editor to deselect it. Use the star to pin a favorite and the copy icon to copy a note.
 4. Search or use the label filters and **Group by label** to find notes. Use the toolbar's import/export icons to transfer notes as `.xlsx` files.
 5. While writing a message, drag a memo from the list onto the chat box; its text is inserted at the caret in your draft, and the memo's images stay in the panel.
 
-Imports add new notes without overwriting existing ones. Images remain local and are not included in Excel exports.
+Imports add new notes without overwriting existing ones. Images remain local and are not included in Excel exports. An image's chosen display size is saved with the memo, so it survives reloads; resizing only changes how the stored image is shown, not the stored image itself.
 
 ## Compatibility
 
@@ -84,7 +85,7 @@ Imports add new notes without overwriting existing ones. Images remain local and
 - Text is plain text (no Markdown or rich-text formatting); images are the only rich content. Images are downscaled before storage and are not exported to Excel — the `Images` column only holds a count.
 - Image support needs IndexedDB and Canvas. If the browser blocks IndexedDB, the text memos keep working and image insertion is disabled.
 - Excel import reads the first worksheet only; formulas import as their cached values, and rich-text cell formatting is ignored.
-- Limits: 300 memos, 120-character titles, 8,000-character bodies, 12 labels per memo (24 characters each), 20 images per memo (source images up to 24 MB, downscaled to at most 1,400 px at quality 0.82 before storage), 8 MB `.xlsx` imports (up to 32 MB expanded across at most 64 entries), and a 60 MB total image budget for the browser.
+- Limits: 300 memos, 120-character titles, 8,000-character bodies, 12 labels per memo (24 characters each), 20 images per memo (source images up to 24 MB, downscaled to at most 1,400 px at quality 0.82 before storage; display sizes 24–1,400 px), 8 MB `.xlsx` imports (up to 32 MB expanded across at most 64 entries), and a 60 MB total image budget for the browser.
 - Labels are flat tags — no nesting, per-label colors, or separate tag manager — and each label is stored per memo, so renaming one means editing every memo that carries it.
 - Favorites are pinned within the memo list; there is no separate favorites-only view yet.
 
@@ -97,7 +98,7 @@ TypeScript sources live under `src/` and compile to the committed `client.js` / 
 | `package.json` | Bundle/client manifest (`dsh.bundle` patch and `dsh.client` browser module) |
 | `cordis.patch.yml` | Inserts the `dsh-side-memo` Loader row |
 | `index.js` | Host half (no-op `apply`; generated from `src/host/index.ts`) |
-| `client.js` | Notes panel, tab type, always-available header toggle, pre-Session drawer, localStorage + IndexedDB store, inline-image editor, label tags/filter/grouping, editor top-bar new-memo button, drag-memo-to-composer paste, `.xlsx` import/export (generated from `src/client/`) |
+| `client.js` | Notes panel, tab type, always-available header toggle, pre-Session drawer, localStorage + IndexedDB store, inline-image editor with the resize/transform overlay, label tags/filter/grouping, editor top-bar new-memo button, drag-memo-to-composer paste, `.xlsx` import/export (generated from `src/client/`) |
 | `src/` | TypeScript sources for both halves |
 | `tsconfig.json`, `scripts/build.mjs` | Type-check configuration and the `yarn build` script |
 | `locale/en.json`, `locale/zh.json` | Plugin Manager title and description |

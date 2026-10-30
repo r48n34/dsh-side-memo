@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { repoRoot } from '../support/load-client.mjs';
 
 const PACKAGE_NAME = 'dsh-side-memo';
-const PACKAGE_VERSION = '1.1.0';
+const PACKAGE_VERSION = '1.2.0';
 
 const readJson = async (relativePath) => JSON.parse(await readFile(join(repoRoot, relativePath), 'utf8'));
 const readText = (relativePath) => readFile(join(repoRoot, relativePath), 'utf8');

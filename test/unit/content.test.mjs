@@ -137,3 +137,94 @@ test('normalizeNote falls back to body text blocks when content is absent', () =
     { type: 'text', text: 'line2' }
   ]);
 });
+
+test('normalizeContent keeps a complete image size pair', () => {
+  const shaped = normalizeContent([
+    { type: 'image', id: 'i1', width: 300, height: 200 },
+    { type: 'text', text: 'hi' }
+  ], '');
+  assert.deepEqual(shaped.content, [
+    { type: 'image', id: 'i1', width: 300, height: 200 },
+    { type: 'text', text: 'hi' }
+  ]);
+  assert.equal(shaped.body, 'hi');
+});
+
+test('normalizeContent normalizes and rounds kept image sizes', () => {
+  const shaped = normalizeContent([
+    { type: 'image', id: 'i1', width: 5000, height: 10 },
+    { type: 'image', id: 'i2', width: 300.6, height: 200.4 }
+  ], '');
+  assert.deepEqual(shaped.content, [
+    { type: 'image', id: 'i1', width: 1400, height: 24 },
+    { type: 'image', id: 'i2', width: 301, height: 200 }
+  ]);
+  assert.equal(shaped.body, '');
+});
+
+test('normalizeContent drops partial and invalid image sizes', () => {
+  const shaped = normalizeContent([
+    { type: 'image', id: 'a', width: 300 },
+    { type: 'image', id: 'b', height: 200 },
+    { type: 'image', id: 'c', width: 0, height: 200 },
+    { type: 'image', id: 'd', width: 300, height: 0 },
+    { type: 'image', id: 'e', width: -5, height: 200 },
+    { type: 'image', id: 'f', width: '300', height: 200 },
+    { type: 'image', id: 'g', width: NaN, height: 200 }
+  ], '');
+  assert.deepEqual(shaped.content, [
+    { type: 'image', id: 'a' },
+    { type: 'image', id: 'b' },
+    { type: 'image', id: 'c' },
+    { type: 'image', id: 'd' },
+    { type: 'image', id: 'e' },
+    { type: 'image', id: 'f' },
+    { type: 'image', id: 'g' }
+  ]);
+});
+
+test('normalizeContent keeps only the id and size on image blocks', () => {
+  const shaped = normalizeContent([
+    { type: 'image', id: 'i'.repeat(120), width: 300, height: 200, src: 'blob:x', alt: 'a' }
+  ], '');
+  assert.deepEqual(shaped.content, [{ type: 'image', id: 'i'.repeat(80), width: 300, height: 200 }]);
+});
+
+test('fitContent preserves image sizes on kept image blocks', () => {
+  const shaped = fitContent([
+    { type: 'image', id: 'i1', width: 300, height: 200 },
+    { type: 'text', text: 'hi' }
+  ], 10);
+  assert.deepEqual(shaped.content, [
+    { type: 'image', id: 'i1', width: 300, height: 200 },
+    { type: 'text', text: 'hi' }
+  ]);
+  assert.equal(shaped.body, 'hi');
+});
+
+test('fitContent keeps image sizes when it truncates the following text', () => {
+  const shaped = fitContent([
+    { type: 'image', id: 'i1', width: 300, height: 200 },
+    { type: 'text', text: 'abcdef' }
+  ], 2);
+  assert.deepEqual(shaped.content, [
+    { type: 'image', id: 'i1', width: 300, height: 200 },
+    { type: 'text', text: 'ab' }
+  ]);
+  assert.equal(shaped.body, 'ab');
+});
+
+test('normalizeNote keeps image sizes through content normalization', () => {
+  const note = normalizeNote({
+    id: 'n3',
+    content: [
+      { type: 'image', id: 'img-1', width: 640, height: 480 },
+      { type: 'text', text: 'caption' }
+    ]
+  });
+  assert.deepEqual(note.content, [
+    { type: 'image', id: 'img-1', width: 640, height: 480 },
+    { type: 'text', text: 'caption' }
+  ]);
+  assert.equal(note.body, 'caption');
+});

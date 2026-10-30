@@ -59,6 +59,17 @@ const HELPER_KEYS = [
   'zipStore'
 ];
 
+// Helpers added by the image-resize feature. Kept in their own list so the
+// historical HELPER_KEYS list and its documented count stay untouched.
+const IMAGE_HELPER_KEYS = [
+  'formatImageSize',
+  'imageBlockSize',
+  'normalizeImageBlockSize',
+  'normalizeImageSize',
+  'parseImageSize',
+  'resizeImageBox'
+];
+
 const CONSTANT_VALUES = {
   MAX_NOTES: 300,
   MAX_TITLE: 120,
@@ -67,6 +78,9 @@ const CONSTANT_VALUES = {
   MAX_LABEL_LEN: 24,
   MAX_IMAGES: 20,
   MAX_IMAGE_DIMENSION: 1400,
+  MIN_IMAGE_SIZE: 24,
+  MAX_IMAGE_SIZE: 1400,
+  IMAGE_RESIZE_STEP: 8,
   MAX_IMAGE_FILE_BYTES: 24 * 1024 * 1024,
   MAX_IMAGE_DATA_BYTES: 1200 * 1024,
   MAX_TOTAL_IMAGE_BYTES: 60 * 1024 * 1024,
@@ -113,11 +127,19 @@ test('the hook exposes every documented pure helper', async () => {
   }
 });
 
+test('the hook exposes every documented image sizing helper', async () => {
+  const { hook } = await loadClient();
+  assert.equal(IMAGE_HELPER_KEYS.length, 6);
+  for (const key of IMAGE_HELPER_KEYS) {
+    assert.equal(typeof hook[key], 'function', 'hook.' + key + ' should be a function');
+  }
+});
+
 test('the hook surface is exactly the original keys plus constants and helpers', async () => {
   const { hook } = await loadClient();
-  const expected = [...ORIGINAL_KEYS, 'constants', ...HELPER_KEYS].sort();
+  const expected = [...ORIGINAL_KEYS, 'constants', ...HELPER_KEYS, ...IMAGE_HELPER_KEYS].sort();
   assert.deepEqual(Object.keys(hook).sort(), expected);
-  assert.equal(Object.keys(hook).length, 49);
+  assert.equal(Object.keys(hook).length, 55);
 });
 
 test('store limits mirror the exposed constants', async () => {
